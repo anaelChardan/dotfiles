@@ -118,8 +118,16 @@ alias ce-in-ee="cd /home/nanou/Developer/pim-enterprise-dev/vendor/akeneo/pim-co
 
 ## DOCKER
 alias dcupd="docker-compose up -d"
+alias dcstop="docker-compose stop"
+alias dcdown="docker-compose down -v"
 
 dockerXdebugOn() {
+    if docker-compose ps | grep fpm | grep -q Exit; then
+        sed -i "s/XDEBUG_ENABLED: 0/XDEBUG_ENABLED: 1/g" docker-compose.override.yml
+        docker-compose up -d
+        return
+    fi
+
     if docker-compose exec fpm env | grep -q PHP_XDEBUG_ENABLED=0; then
         sed -i "s/XDEBUG_ENABLED: 0/XDEBUG_ENABLED: 1/g" docker-compose.override.yml
         docker-compose up -d
@@ -127,6 +135,12 @@ dockerXdebugOn() {
 }
 
 dockerXdebugOff() {
+    if docker-compose ps | grep fpm | grep -q Exit; then
+        sed -i "s/XDEBUG_ENABLED: 1/XDEBUG_ENABLED: 0/g" docker-compose.override.yml
+        docker-compose up -d
+        return
+    fi
+
     if docker-compose exec fpm env | grep -q PHP_XDEBUG_ENABLED=1; then
         sed -i "s/XDEBUG_ENABLED: 1/XDEBUG_ENABLED: 0/g" docker-compose.override.yml
         docker-compose up -d
@@ -149,7 +163,7 @@ alias xsf="xfpm bin/console"
 alias cc="rm -rf var/cache/*"
 
 ## PHP
-alias composer="dfpm php -d memory_limit=-1 /usr/local/bin/composer"
+#alias composer="dfpm php -d memory_limit=-1 /usr/local/bin/composer"
 
 ## PHPSPEC
 alias spec="dfpm vendor/bin/phpspec"
@@ -197,33 +211,52 @@ alias xphpunit="phpunitWithoutFilter true"
 alias behat="dfpm vendor/bin/behat"
 alias xbehat="xfpm vendor/bin/behat"
 
-## PIM
+## PIM INSTALL
 alias pim-install-dep="dxdgoff; bin/docker/pim-dependencies.sh"
 alias pim-install="dxdgoff; bin/docker/pim-initialize.sh"
+alias pi="pim-install"
 alias pim-install-test="dxdgoff; cc; dbehat; pim-webpacktest"
+
+### PIM DB
 alias pim-db="sf --env=prod pim:install --force --symlink --clean"
 alias pim-db-behat="sf --env=behat pim:installer:db"
+
+### PIM FRONT INSTALL
 alias pim-webpackdev="docker-compose run --rm node yarn run webpack-dev"
 alias pim-webpacktest="docker-compose run --rm node yarn run webpack-test"
 alias pim-assets="sf --env=prod pim:installer:assets --symlink --clean"
 alias pim-front="cc && pim-assets && pim-webpackdev && pim-webpacktest"
+alias pim-yarn="docker-compose run --rm node yarn run"
+
+### PIM JOB
 alias pim-job-daemon='sf akeneo:batch:job-queue-consumer-daemon --env=prod'
 alias pim-job-daemon-once='sf akeneo:batch:job-queue-consumer-daemon --env=prod --run-once'
 alias xpim-job-daemon-once='xsf akeneo:batch:job-queue-consumer-daemon --env=prod --run-once'
 alias pim-kill-job-daemon='fpm pkill -f job-queue-consumer-daemon'
-alias pim-acceptance-front="docker-compose run --rm node yarn run acceptance"
+
+### PIM ACCEPTANCE
+alias pim-ce-front-acceptance="docker-compose run --rm node yarn run acceptance ./tests/features"
+alias pim-ee-front-acceptance="docker-compose run --rm node yarn run acceptance ./vendor/akeneo/pim-community-dev/tests/features ./tests/features"
+
+### PIM LINT
 alias pim-front-lint="docker-compose run --rm node yarn run lint"
 alias pim-back-lint="dfpm vendor/bin/php-cs-fixer fix --diff --dry-run --config=.php_cs.php --format=junit"
 alias pim-back-lint-fix="dfpm vendor/bin/php-cs-fixer fix --diff --config=.php_cs.php"
+
+### PIM BEHAT
+alias pim-behat-legacy="behat -p legacy"
+alias pbl="pim-behat-legacy"
+alias xpim-behat-legacy="xbehat -p legacy"
+alias xpbl"xpim-behat-legacy"
+
+
+### PIM COUPLING DETECTOR
 alias pim-coupling-detector="dfpm vendor/bin/php-coupling-detector detect --config-file=.php_cd.php src"
 alias pim-coupling-detector-usermanagement="dfpm vendor/bin/php-coupling-detector detect --config-file=src/Akeneo/UserManagement/.php_cd.php src/Akeneo/UserManagement"
-alias pim-coupling-detector-channel="dfpm vendor/bin/php-coupling-detector detect --config-file=src/Akeneo/Channel/.php_cd.php src/Akeneo/Channel"
-alias pim-coupling-detector-all="pim-coupling-detector && pim-coupling-detector-usermanagement && pim-coupling-detector-channel"
+alias pim-coupling-detector-permission="dfpm vendor/bin/php-coupling-detector detect --config-file=src/Akeneo/Pim/Permission/.php_cd.php src/Akeneo/Pim/Permission"
 
-if [[ ! $TERM =~ screen ]]; then
-    exec tmux -u
-fi
+alias pim-coupling-detector-all="pim-coupling-detector && pim-coupling-detector-usermanagement && pim-coupling-detector-channel && pim-coupling-detector-workflow && pim-coupling-detector-permission"
 
-if [[ -r /usr/local/lib/python2.7/site-packages/powerline/bindings/zsh/powerline.zsh ]]; then
-source /usr/local/lib/python2.7/site-packages/powerline/bindings/zsh/powerline.zsh
-fi
+alias git-oups="git add . && git ci --amend --no-edit && git push -f"
+
+tmux new-session -A -s main
